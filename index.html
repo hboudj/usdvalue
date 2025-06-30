@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>UsdValue - Simple USD Converter</title>
+    <title>UsdValue - Real-time Converter</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background-color: #f9f9f9; }
@@ -17,15 +17,15 @@
     <p>1 USD = <span id="result">...</span></p>
     <label for="currency">Choose a currency:</label>
     <select id="currency">
-        <option value="EUR">EUR</option>
-        <option value="BTC">BTC</option>
-        <option value="ETH">ETH</option>
-        <option value="XAF">XAF</option>
-        <option value="JPY">JPY</option>
-        <option value="GBP">GBP</option>
-        <option value="CAD">CAD</option>
-        <option value="AUD">AUD</option>
-        <option value="USDT">USDT</option>
+        <option value="eur">EUR</option>
+        <option value="xaf">XAF</option>
+        <option value="jpy">JPY</option>
+        <option value="gbp">GBP</option>
+        <option value="cad">CAD</option>
+        <option value="aud">AUD</option>
+        <option value="usdt">USDT</option>
+        <option value="bitcoin">BTC</option>
+        <option value="ethereum">ETH</option>
     </select>
 
     <script>
@@ -34,10 +34,20 @@
 
         async function fetchRate(currency) {
             try {
-                const res = await fetch('https://v6.exchangerate-api.com/v6/0b93015e962b4696101c7715/latest/USD');
-                const data = await res.json();
-                const rate = data.conversion_rates[currency];
-                resultSpan.innerText = rate.toFixed(4) + ' ' + currency;
+                let url = '';
+                if (currency === 'bitcoin' || currency === 'ethereum' || currency === 'usdt') {
+                    url = `https://api.coingecko.com/api/v3/simple/price?ids=${currency}&vs_currencies=usd`;
+                    const res = await fetch(url);
+                    const data = await res.json();
+                    const rate = 1 / data[currency].usd;
+                    resultSpan.innerText = rate.toFixed(6) + ' ' + currency.toUpperCase();
+                } else {
+                    url = `https://v6.exchangerate-api.com/v6/0b93015e962b4696101c7715/latest/USD`;
+                    const res = await fetch(url);
+                    const data = await res.json();
+                    const rate = data.conversion_rates[currency.toUpperCase()];
+                    resultSpan.innerText = rate.toFixed(4) + ' ' + currency.toUpperCase();
+                }
             } catch (error) {
                 resultSpan.innerText = 'Error';
             }
