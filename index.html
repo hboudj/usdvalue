@@ -8,8 +8,8 @@
     <style>
         body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background-color: #f9f9f9; }
         h1 { color: #333; }
-        select, button { padding: 10px; font-size: 16px; margin: 10px; }
-        #result { font-size: 24px; margin-top: 20px; }
+        select { padding: 10px; font-size: 16px; margin: 10px; }
+        #result { font-size: 24px; margin-top: 20px; color: #2a2a2a; }
     </style>
 </head>
 <body>
@@ -34,9 +34,10 @@
 
         async function fetchRate(currency) {
             try {
-                const res = await fetch(`https://api.exchangerate.host/latest?base=USD&symbols=${currency}`);
+                const res = await fetch('https://v6.exchangerate-api.com/v6/0b93015e962b4696101c7715/latest/USD');
                 const data = await res.json();
-                resultSpan.innerText = data.rates[currency].toFixed(4) + ' ' + currency;
+                const rate = data.conversion_rates[currency];
+                resultSpan.innerText = rate.toFixed(4) + ' ' + currency;
             } catch (error) {
                 resultSpan.innerText = 'Error';
             }
