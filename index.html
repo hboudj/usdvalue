@@ -108,8 +108,8 @@
       });
     });
 
-    fiatSelect.addEventListener("change", fetchRate);
-    cryptoSelect.addEventListener("change", fetchRate);
+    fiatSelect.addEventListener("change", () => setTimeout(fetchRate, 100));
+    cryptoSelect.addEventListener("change", () => setTimeout(fetchRate, 100));
 
     document.addEventListener("DOMContentLoaded", async () => {
       await loadFiatCurrencies();
