@@ -1,0 +1,49 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>UsdValue - Simple USD Converter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background-color: #f9f9f9; }
+        h1 { color: #333; }
+        select, button { padding: 10px; font-size: 16px; margin: 10px; }
+        #result { font-size: 24px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>USD Value</h1>
+    <p>1 USD = <span id="result">...</span></p>
+    <label for="currency">Choose a currency:</label>
+    <select id="currency">
+        <option value="EUR">EUR</option>
+        <option value="BTC">BTC</option>
+        <option value="ETH">ETH</option>
+        <option value="XAF">XAF</option>
+        <option value="JPY">JPY</option>
+        <option value="GBP">GBP</option>
+        <option value="CAD">CAD</option>
+        <option value="AUD">AUD</option>
+        <option value="USDT">USDT</option>
+    </select>
+
+    <script>
+        const resultSpan = document.getElementById('result');
+        const select = document.getElementById('currency');
+
+        async function fetchRate(currency) {
+            try {
+                const res = await fetch(`https://api.exchangerate.host/latest?base=USD&symbols=${currency}`);
+                const data = await res.json();
+                resultSpan.innerText = data.rates[currency].toFixed(4) + ' ' + currency;
+            } catch (error) {
+                resultSpan.innerText = 'Error';
+            }
+        }
+
+        select.addEventListener('change', () => fetchRate(select.value));
+        fetchRate(select.value);
+    </script>
+</body>
+</html>
