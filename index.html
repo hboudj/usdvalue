@@ -14,19 +14,21 @@
     .hidden { display: none; }
     #result { margin-top: 20px; font-size: 24px; color: #2a2a2a; }
     label { font-weight: bold; }
+    #typewriter { font-size: 18px; color: #666; margin-bottom: 20px; min-height: 24px; }
   </style>
 </head>
 <body>
   <div class="converter">
     <h1>USD Value</h1>
+    <h2 id="typewriter"></h2>
     <p>1 USD = <span id="result">Select a currency</span></p>
 
     <div>
-      <label><input type="radio" name="type" value="fiat"> FIAT</label>
+      <label><input type="radio" name="type" value="fiat" checked> FIAT</label>
       <label><input type="radio" name="type" value="crypto"> CRYPTO</label>
     </div>
 
-    <div id="fiat-container" class="hidden">
+    <div id="fiat-container">
       <select id="fiat-select" class="js-select2" style="width: 300px;"></select>
     </div>
 
@@ -54,6 +56,7 @@
         const option = document.createElement("option");
         option.value = code;
         option.text = code;
+        if (code === "EUR") option.selected = true;
         fiatSelect.appendChild(option);
       });
     }
@@ -65,6 +68,7 @@
         const option = document.createElement("option");
         option.value = coin.id;
         option.text = `${coin.name} (${coin.symbol.toUpperCase()})`;
+        if (coin.id === "bitcoin") option.selected = true;
         cryptoSelect.appendChild(option);
       });
     }
@@ -96,12 +100,11 @@
         if (selectedType === "fiat") {
           fiatContainer.classList.remove("hidden");
           cryptoContainer.classList.add("hidden");
-          resultSpan.innerText = "Select a currency";
         } else {
           fiatContainer.classList.add("hidden");
           cryptoContainer.classList.remove("hidden");
-          resultSpan.innerText = "Select a currency";
         }
+        fetchRate();
       });
     });
 
@@ -112,7 +115,20 @@
       await loadFiatCurrencies();
       await loadCryptoCurrencies();
       $('.js-select2').select2({ placeholder: "Search currency...", allowClear: true });
+      fetchRate();
+      typeWriter();
     });
+
+    // Typewriter animation
+    const text = "We believe the USD is the most powerful currency in the world. That's why we fixed it.";
+    let i = 0;
+    function typeWriter() {
+      if (i < text.length) {
+        document.getElementById("typewriter").innerHTML += text.charAt(i);
+        i++;
+        setTimeout(typeWriter, 40);
+      }
+    }
   </script>
 </body>
 </html>
