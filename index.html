@@ -10,7 +10,8 @@
     body { font-family: Arial, sans-serif; background: #f0f2f5; padding: 40px; text-align: center; }
     h1 { color: #333; }
     .converter { background: white; padding: 30px; border-radius: 10px; display: inline-block; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    select { width: 300px; font-size: 16px; padding: 10px; margin: 10px; }
+    select, input[type="radio"] { margin: 10px; }
+    .hidden { display: none; }
     #result { margin-top: 20px; font-size: 24px; color: #2a2a2a; }
     label { font-weight: bold; }
   </style>
@@ -21,13 +22,16 @@
     <p>1 USD = <span id="result">...</span></p>
 
     <div>
-      <label>Convert to a FIAT currency:</label><br>
-      <select id="fiat-select" class="js-fiat-select" style="width: 300px;"></select>
+      <label><input type="radio" name="type" value="fiat" checked> FIAT</label>
+      <label><input type="radio" name="type" value="crypto"> CRYPTO</label>
     </div>
 
-    <div>
-      <label>Convert to a CRYPTO currency:</label><br>
-      <select id="crypto-select" class="js-crypto-select" style="width: 300px;"></select>
+    <div id="fiat-container">
+      <select id="fiat-select" class="js-select2" style="width: 300px;"></select>
+    </div>
+
+    <div id="crypto-container" class="hidden">
+      <select id="crypto-select" class="js-select2" style="width: 300px;"></select>
     </div>
   </div>
 
@@ -37,6 +41,8 @@
     const fiatSelect = document.getElementById("fiat-select");
     const cryptoSelect = document.getElementById("crypto-select");
     const resultSpan = document.getElementById("result");
+    const fiatContainer = document.getElementById("fiat-container");
+    const cryptoContainer = document.getElementById("crypto-container");
 
     async function loadFiatCurrencies() {
       const res = await fetch('https://v6.exchangerate-api.com/v6/0b93015e962b4696101c7715/latest/USD');
@@ -51,7 +57,7 @@
     }
 
     async function loadCryptoCurrencies() {
-      const res = await fetch('https://api.coingecko.com/api/v3/coins/list?per_page=100&page=1');
+      const res = await fetch('https://api.coingecko.com/api/v3/coins/list?per_page=250&page=1');
       const data = await res.json();
       data.forEach(coin => {
         const option = document.createElement("option");
@@ -79,21 +85,29 @@
       }
     }
 
-    fiatSelect.addEventListener("change", () => {
-      cryptoSelect.disabled = !!fiatSelect.value;
-      fetchRate(fiatSelect.value, "fiat");
+    document.querySelectorAll('input[name="type"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        const selectedType = document.querySelector('input[name="type"]:checked').value;
+        if (selectedType === "fiat") {
+          fiatContainer.classList.remove("hidden");
+          cryptoContainer.classList.add("hidden");
+          fetchRate(fiatSelect.value, "fiat");
+        } else {
+          fiatContainer.classList.add("hidden");
+          cryptoContainer.classList.remove("hidden");
+          fetchRate(cryptoSelect.value, "crypto");
+        }
+      });
     });
 
-    cryptoSelect.addEventListener("change", () => {
-      fiatSelect.disabled = !!cryptoSelect.value;
-      fetchRate(cryptoSelect.value, "crypto");
-    });
+    fiatSelect.addEventListener("change", () => fetchRate(fiatSelect.value, "fiat"));
+    cryptoSelect.addEventListener("change", () => fetchRate(cryptoSelect.value, "crypto"));
 
     document.addEventListener("DOMContentLoaded", async () => {
       await loadFiatCurrencies();
       await loadCryptoCurrencies();
-      $('.js-fiat-select').select2({ placeholder: "Select a fiat currency", allowClear: true });
-      $('.js-crypto-select').select2({ placeholder: "Select a crypto", allowClear: true });
+      $('.js-select2').select2({ placeholder: "Search currency or crypto...", allowClear: true });
+      fetchRate(fiatSelect.value, "fiat");
     });
   </script>
 </body>
