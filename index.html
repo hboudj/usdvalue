@@ -2,59 +2,81 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>UsdValue - Real-time Converter</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background-color: #f9f9f9; }
-        h1 { color: #333; }
-        select { padding: 10px; font-size: 16px; margin: 10px; }
-        #result { font-size: 24px; margin-top: 20px; color: #2a2a2a; }
-    </style>
+  <meta charset="UTF-8">
+  <title>USD Value Converter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <style>
+    body { font-family: Arial, sans-serif; background: #f0f2f5; padding: 40px; text-align: center; }
+    h1 { color: #333; }
+    .converter { background: white; padding: 30px; border-radius: 10px; display: inline-block; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    select { width: 300px; font-size: 16px; padding: 10px; margin-top: 20px; }
+    #result { margin-top: 20px; font-size: 24px; color: #2a2a2a; }
+  </style>
 </head>
 <body>
+  <div class="converter">
     <h1>USD Value</h1>
     <p>1 USD = <span id="result">...</span></p>
-    <label for="currency">Choose a currency:</label>
-    <select id="currency">
-        <option value="eur">EUR</option>
-        <option value="xaf">XAF</option>
-        <option value="jpy">JPY</option>
-        <option value="gbp">GBP</option>
-        <option value="cad">CAD</option>
-        <option value="aud">AUD</option>
-        <option value="usdt">USDT</option>
-        <option value="bitcoin">BTC</option>
-        <option value="ethereum">ETH</option>
+    <select id="currency" class="js-example-basic-single">
+      <optgroup label="Fiat Currencies" id="fiat-options">
+        <!-- Injected by JS -->
+      </optgroup>
+      <optgroup label="Cryptocurrencies" id="crypto-options">
+        <!-- Injected by JS -->
+      </optgroup>
     </select>
+  </div>
 
-    <script>
-        const resultSpan = document.getElementById('result');
-        const select = document.getElementById('currency');
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const resultSpan = document.getElementById("result");
+      const fiatGroup = document.getElementById("fiat-options");
+      const cryptoGroup = document.getElementById("crypto-options");
+      const select = document.getElementById("currency");
 
-        async function fetchRate(currency) {
-            try {
-                let url = '';
-                if (currency === 'bitcoin' || currency === 'ethereum' || currency === 'usdt') {
-                    url = `https://api.coingecko.com/api/v3/simple/price?ids=${currency}&vs_currencies=usd`;
-                    const res = await fetch(url);
-                    const data = await res.json();
-                    const rate = 1 / data[currency].usd;
-                    resultSpan.innerText = rate.toFixed(6) + ' ' + currency.toUpperCase();
-                } else {
-                    url = `https://v6.exchangerate-api.com/v6/0b93015e962b4696101c7715/latest/USD`;
-                    const res = await fetch(url);
-                    const data = await res.json();
-                    const rate = data.conversion_rates[currency.toUpperCase()];
-                    resultSpan.innerText = rate.toFixed(4) + ' ' + currency.toUpperCase();
-                }
-            } catch (error) {
-                resultSpan.innerText = 'Error';
-            }
+      // Load fiat currencies from ExchangeRate API
+      const fiatRes = await fetch('https://v6.exchangerate-api.com/v6/0b93015e962b4696101c7715/latest/USD');
+      const fiatData = await fiatRes.json();
+      Object.keys(fiatData.conversion_rates).forEach(code => {
+        const option = document.createElement("option");
+        option.value = code;
+        option.text = code;
+        fiatGroup.appendChild(option);
+      });
+
+      // Load cryptos from CoinGecko
+      const cryptoRes = await fetch('https://api.coingecko.com/api/v3/coins/list');
+      const cryptoData = await cryptoRes.json();
+      cryptoData.forEach(c => {
+        const option = document.createElement("option");
+        option.value = c.id;
+        option.text = c.name + " (" + c.symbol.toUpperCase() + ")";
+        cryptoGroup.appendChild(option);
+      });
+
+      $('.js-example-basic-single').select2();
+
+      async function fetchRate(currency) {
+        try {
+          if (fiatData.conversion_rates[currency]) {
+            const rate = fiatData.conversion_rates[currency];
+            resultSpan.innerText = rate.toFixed(4) + ' ' + currency;
+          } else {
+            const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${currency}&vs_currencies=usd`);
+            const data = await res.json();
+            const rate = 1 / (data[currency]?.usd || 1);
+            resultSpan.innerText = rate.toFixed(6) + ' ' + currency.toUpperCase();
+          }
+        } catch (e) {
+          resultSpan.innerText = "Error";
         }
+      }
 
-        select.addEventListener('change', () => fetchRate(select.value));
-        fetchRate(select.value);
-    </script>
+      select.addEventListener("change", () => fetchRate(select.value));
+      setTimeout(() => fetchRate(select.value), 2000); // small delay to wait for options to load
+    });
+  </script>
 </body>
 </html>
