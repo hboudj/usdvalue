@@ -19,14 +19,14 @@
 <body>
   <div class="converter">
     <h1>USD Value</h1>
-    <p>1 USD = <span id="result">...</span></p>
+    <p>1 USD = <span id="result">Select a currency</span></p>
 
     <div>
-      <label><input type="radio" name="type" value="fiat" checked> FIAT</label>
+      <label><input type="radio" name="type" value="fiat"> FIAT</label>
       <label><input type="radio" name="type" value="crypto"> CRYPTO</label>
     </div>
 
-    <div id="fiat-container">
+    <div id="fiat-container" class="hidden">
       <select id="fiat-select" class="js-select2" style="width: 300px;"></select>
     </div>
 
@@ -44,11 +44,13 @@
     const fiatContainer = document.getElementById("fiat-container");
     const cryptoContainer = document.getElementById("crypto-container");
 
+    let fiatRates = {};
+
     async function loadFiatCurrencies() {
       const res = await fetch('https://v6.exchangerate-api.com/v6/0b93015e962b4696101c7715/latest/USD');
       const data = await res.json();
-      const currencies = Object.keys(data.conversion_rates);
-      currencies.forEach(code => {
+      fiatRates = data.conversion_rates;
+      Object.keys(fiatRates).forEach(code => {
         const option = document.createElement("option");
         option.value = code;
         option.text = code;
@@ -57,7 +59,7 @@
     }
 
     async function loadCryptoCurrencies() {
-      const res = await fetch('https://api.coingecko.com/api/v3/coins/list?per_page=250&page=1');
+      const res = await fetch('https://api.coingecko.com/api/v3/coins/list?per_page=200&page=1');
       const data = await res.json();
       data.forEach(coin => {
         const option = document.createElement("option");
@@ -69,16 +71,20 @@
 
     async function fetchRate(value, type) {
       try {
+        if (!value) return;
         if (type === "fiat") {
-          const res = await fetch('https://v6.exchangerate-api.com/v6/0b93015e962b4696101c7715/latest/USD');
-          const data = await res.json();
-          const rate = data.conversion_rates[value];
+          const rate = fiatRates[value];
           resultSpan.innerText = rate ? rate.toFixed(4) + ' ' + value : "Unavailable";
         } else {
           const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${value}&vs_currencies=usd`);
           const data = await res.json();
-          const rate = 1 / (data[value]?.usd || 1);
-          resultSpan.innerText = rate.toFixed(6) + ' ' + value.toUpperCase();
+          const usdValue = data[value]?.usd;
+          if (usdValue && usdValue > 0) {
+            const rate = 1 / usdValue;
+            resultSpan.innerText = rate.toFixed(6) + ' ' + value.toUpperCase();
+          } else {
+            resultSpan.innerText = "Unavailable";
+          }
         }
       } catch (e) {
         resultSpan.innerText = "Error";
@@ -91,11 +97,11 @@
         if (selectedType === "fiat") {
           fiatContainer.classList.remove("hidden");
           cryptoContainer.classList.add("hidden");
-          fetchRate(fiatSelect.value, "fiat");
+          resultSpan.innerText = "Select a currency";
         } else {
           fiatContainer.classList.add("hidden");
           cryptoContainer.classList.remove("hidden");
-          fetchRate(cryptoSelect.value, "crypto");
+          resultSpan.innerText = "Select a currency";
         }
       });
     });
@@ -106,8 +112,7 @@
     document.addEventListener("DOMContentLoaded", async () => {
       await loadFiatCurrencies();
       await loadCryptoCurrencies();
-      $('.js-select2').select2({ placeholder: "Search currency or crypto...", allowClear: true });
-      fetchRate(fiatSelect.value, "fiat");
+      $('.js-select2').select2({ placeholder: "Search currency...", allowClear: true });
     });
   </script>
 </body>
