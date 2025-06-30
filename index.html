@@ -12,22 +12,26 @@
     .converter { background: white; padding: 30px; border-radius: 10px; display: inline-block; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
     select { width: 300px; font-size: 16px; padding: 10px; margin: 10px; }
     #result { margin-top: 20px; font-size: 24px; color: #2a2a2a; }
+    label { font-weight: bold; }
   </style>
 </head>
 <body>
   <div class="converter">
     <h1>USD Value</h1>
     <p>1 USD = <span id="result">...</span></p>
+
     <div>
       <label>Convert to a FIAT currency:</label><br>
-      <select id="fiat-select" class="js-fiat-select"></select>
+      <select id="fiat-select" class="js-fiat-select" style="width: 300px;"></select>
     </div>
+
     <div>
       <label>Convert to a CRYPTO currency:</label><br>
-      <select id="crypto-select" class="js-crypto-select"></select>
+      <select id="crypto-select" class="js-crypto-select" style="width: 300px;"></select>
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script>
     const fiatSelect = document.getElementById("fiat-select");
@@ -75,15 +79,21 @@
       }
     }
 
-    fiatSelect.addEventListener("change", () => fetchRate(fiatSelect.value, "fiat"));
-    cryptoSelect.addEventListener("change", () => fetchRate(cryptoSelect.value, "crypto"));
+    fiatSelect.addEventListener("change", () => {
+      cryptoSelect.disabled = !!fiatSelect.value;
+      fetchRate(fiatSelect.value, "fiat");
+    });
+
+    cryptoSelect.addEventListener("change", () => {
+      fiatSelect.disabled = !!cryptoSelect.value;
+      fetchRate(cryptoSelect.value, "crypto");
+    });
 
     document.addEventListener("DOMContentLoaded", async () => {
       await loadFiatCurrencies();
       await loadCryptoCurrencies();
-      $('.js-fiat-select').select2();
-      $('.js-crypto-select').select2();
-      fetchRate(fiatSelect.value || "EUR", "fiat");
+      $('.js-fiat-select').select2({ placeholder: "Select a fiat currency", allowClear: true });
+      $('.js-crypto-select').select2({ placeholder: "Select a crypto", allowClear: true });
     });
   </script>
 </body>
