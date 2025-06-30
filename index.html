@@ -69,25 +69,24 @@
       });
     }
 
-    async function fetchRate(value, type) {
-      try {
+    async function fetchRate() {
+      const selectedType = document.querySelector('input[name="type"]:checked')?.value;
+      if (selectedType === "fiat") {
+        const value = fiatSelect.value;
+        const rate = fiatRates[value];
+        resultSpan.innerText = rate ? rate.toFixed(4) + ' ' + value : "Unavailable";
+      } else if (selectedType === "crypto") {
+        const value = cryptoSelect.value;
         if (!value) return;
-        if (type === "fiat") {
-          const rate = fiatRates[value];
-          resultSpan.innerText = rate ? rate.toFixed(4) + ' ' + value : "Unavailable";
+        const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${value}&vs_currencies=usd`);
+        const data = await res.json();
+        const usdValue = data[value]?.usd;
+        if (usdValue && usdValue > 0) {
+          const rate = 1 / usdValue;
+          resultSpan.innerText = rate.toFixed(6) + ' ' + value.toUpperCase();
         } else {
-          const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${value}&vs_currencies=usd`);
-          const data = await res.json();
-          const usdValue = data[value]?.usd;
-          if (usdValue && usdValue > 0) {
-            const rate = 1 / usdValue;
-            resultSpan.innerText = rate.toFixed(6) + ' ' + value.toUpperCase();
-          } else {
-            resultSpan.innerText = "Unavailable";
-          }
+          resultSpan.innerText = "Unavailable";
         }
-      } catch (e) {
-        resultSpan.innerText = "Error";
       }
     }
 
@@ -106,8 +105,8 @@
       });
     });
 
-    fiatSelect.addEventListener("change", () => fetchRate(fiatSelect.value, "fiat"));
-    cryptoSelect.addEventListener("change", () => fetchRate(cryptoSelect.value, "crypto"));
+    fiatSelect.addEventListener("change", fetchRate);
+    cryptoSelect.addEventListener("change", fetchRate);
 
     document.addEventListener("DOMContentLoaded", async () => {
       await loadFiatCurrencies();
