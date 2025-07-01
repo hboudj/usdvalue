@@ -48,15 +48,18 @@
       margin-bottom: 30px;
     }
 
-    .converter-main {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      margin-bottom: 30px;
+    .input-fields {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+        margin-bottom: 20px;
     }
 
-    .converter-main > div {
-      flex: 1;
+    .converter-main {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: end;
+      gap: 15px;
     }
 
     .field-group {
@@ -81,9 +84,16 @@
       box-sizing: border-box;
     }
     
+    .select2-container .select2-selection--single {
+        display: flex;
+        align-items: center;
+    }
+
     .select2-container .select2-selection--single .select2-selection__rendered {
-        line-height: 46px;
-        padding-left: 15px;
+        padding-left: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .swap-button {
@@ -99,7 +109,7 @@
       cursor: pointer;
       font-size: 16px;
       transition: transform 0.2s ease, background-color 0.2s ease;
-      margin-top: 20px;
+      margin-bottom: 4px; /* Aligner avec les inputs */
     }
     .swap-button:hover {
       transform: scale(1.1) rotate(180deg);
@@ -107,7 +117,7 @@
     }
 
     .result-area {
-      margin-top: 20px;
+      margin-top: 30px;
     }
     #result-from {
       color: var(--light-text-color);
@@ -135,21 +145,22 @@
       color: var(--light-text-color);
     }
     
-    .currency-option img {
+    .currency-option img, .currency-option i {
         width: 20px;
-        height: 15px;
         margin-right: 10px;
-        border: 1px solid #ddd;
-        border-radius: 2px;
         vertical-align: middle;
     }
 
     @media (max-width: 600px) {
       .converter-main {
-        flex-direction: column;
+        grid-template-columns: 1fr;
+        gap: 10px;
       }
       .swap-button {
         transform: rotate(90deg);
+        grid-row: 2;
+        justify-self: center;
+        margin: 10px 0;
       }
        .swap-button:hover {
         transform: scale(1.1) rotate(90deg);
@@ -163,12 +174,14 @@
     <div class="converter-card">
       <h1>Convertisseur de Devises</h1>
       
+      <div class="input-fields">
+          <div class="field-group">
+              <label for="amount">Montant</label>
+              <input type="number" id="amount" value="1">
+          </div>
+      </div>
+      
       <div class="converter-main">
-        <div class="field-group">
-          <label for="amount">Montant</label>
-          <input type="number" id="amount" value="1">
-        </div>
-        
         <div class="field-group">
           <label for="from-currency">De</label>
           <select id="from-currency" class="currency-select"></select>
@@ -191,8 +204,7 @@
             <button id="copy-button" title="Copier le résultat"><i class="fa-solid fa-copy"></i></button>
         </p>
       </div>
-
-      </div>
+    </div>
     <footer>
       <p>Taux de change fournis par ExchangeRate-API & CoinGecko. Dernière mise à jour : <span id="last-updated">N/A</span>.</p>
     </footer>
@@ -209,7 +221,6 @@
       const toSelect = $('#to-currency');
       const swapButton = $('#swap-button');
       const resultFrom = $('#result-from');
-      const resultTo = $('#result-to');
       const resultValue = $('#result-value');
       const lastUpdatedSpan = $('#last-updated');
       const copyButton = $('#copy-button');
@@ -220,8 +231,7 @@
 
       // --- FONCTIONS AUXILIAIRES ---
       function getFlagUrl(currencyCode) {
-        // Mappage spécial pour l'Euro et autres cas
-        const specialCases = { 'EUR': 'eu', 'USD': 'us', 'GBP': 'gb', 'JPY': 'jp' };
+        const specialCases = { 'EUR': 'eu', 'USD': 'us', 'GBP': 'gb', 'JPY': 'jp', 'CHF': 'ch', 'CAD': 'ca', 'AUD': 'au' };
         const code = specialCases[currencyCode] || currencyCode.substring(0, 2).toLowerCase();
         return `https://flagcdn.com/w20/${code}.png`;
       }
@@ -229,12 +239,13 @@
       function formatCurrencyOption(currency) {
         if (!currency.id) return currency.text;
         
+        const currencyData = allCurrencies.fiat[currency.id] ? { type: 'fiat', ...allCurrencies.fiat[currency.id] } : { type: 'crypto', ...allCurrencies.crypto[currency.id] };
+
         let iconHtml = '';
-        if (currency.type === 'fiat') {
+        if (currencyData.type === 'fiat') {
           iconHtml = `<img src="${getFlagUrl(currency.id)}" class="currency-option" alt="${currency.id} flag" />`;
         } else {
-          // Placeholder pour les logos de crypto
-          iconHtml = `<i class="fa-solid fa-coins" style="margin-right: 10px; color: #888;"></i>`;
+          iconHtml = `<i class="fa-solid fa-coins currency-option" style="color: #888;"></i>`;
         }
         return $(`<span>${iconHtml}${currency.text}</span>`);
       }
@@ -242,7 +253,6 @@
       // --- API & DATA ---
       async function loadCurrencies() {
         try {
-          // 1. Charger les taux FIAT (avec mise en cache)
           const cachedFiat = JSON.parse(localStorage.getItem('fiatRates'));
           const now = new Date().getTime();
 
@@ -251,8 +261,10 @@
           } else {
             const res = await fetch('https://v6.exchangerate-api.com/v6/0b93015e962b4696101c7715/latest/USD');
             const data = await res.json();
-            fiatRates = data.conversion_rates;
-            localStorage.setItem('fiatRates', JSON.stringify({ timestamp: now, rates: fiatRates }));
+            if (data.result === 'success') {
+              fiatRates = data.conversion_rates;
+              localStorage.setItem('fiatRates', JSON.stringify({ timestamp: now, rates: fiatRates }));
+            }
           }
           
           Object.keys(fiatRates).forEach(code => {
@@ -260,10 +272,9 @@
           });
           lastUpdatedSpan.text(new Date().toLocaleString('fr-CA'));
 
-          // 2. Charger la liste des cryptos
           const cryptoRes = await fetch('https://api.coingecko.com/api/v3/coins/list');
           const cryptoData = await cryptoRes.json();
-          cryptoData.slice(0, 200).forEach(coin => { // Limiter pour la démo
+          cryptoData.slice(0, 250).forEach(coin => { // Limiter pour la démo
             allCurrencies.crypto[coin.id] = { name: `${coin.name} (${coin.symbol.toUpperCase()})` };
           });
           
@@ -289,13 +300,11 @@
         fromSelect.append(fiatOptGroup.clone()).append(cryptoOptGroup.clone());
         toSelect.append(fiatOptGroup.clone()).append(cryptoOptGroup.clone());
         
-        // Initialiser Select2
         $('.currency-select').select2({
           templateResult: formatCurrencyOption,
           templateSelection: formatCurrencyOption
         });
         
-        // Définir les valeurs par défaut
         fromSelect.val('USD').trigger('change.select2');
         toSelect.val('EUR').trigger('change.select2');
         
@@ -303,44 +312,43 @@
       }
 
       // --- LOGIQUE DE CONVERSION ---
+      async function getPriceInUSD(currencyId) {
+        if (fiatRates[currencyId]) {
+          return 1 / fiatRates[currencyId];
+        }
+        if (allCurrencies.crypto[currencyId]) {
+          const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${currencyId}&vs_currencies=usd`);
+          const data = await res.json();
+          if (data && data[currencyId] && data[currencyId].usd) {
+            return data[currencyId].usd;
+          }
+        }
+        throw new Error(`Impossible d'obtenir le prix pour ${currencyId}`);
+      }
+
       async function calculateRate() {
-        resultValue.text('...');
-        const amount = parseFloat(amountInput.val()) || 0;
+        resultValue.html('<i class="fa-solid fa-spinner fa-spin"></i>');
+        const amount = parseFloat(amountInput.val());
         const fromCurrency = fromSelect.val();
         const toCurrency = toSelect.val();
         
-        if (!amount || !fromCurrency || !toCurrency) return;
+        if (isNaN(amount) || !fromCurrency || !toCurrency) {
+          resultValue.text('-');
+          return;
+        }
 
         try {
-          // Obtenir le taux de 'from' en USD
-          let fromRateInUsd;
-          if (allCurrencies.fiat[fromCurrency]) {
-            fromRateInUsd = 1 / fiatRates[fromCurrency];
-          } else {
-            const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${fromCurrency}&vs_currencies=usd`);
-            const data = await res.json();
-            fromRateInUsd = data[fromCurrency].usd;
-          }
-
-          // Obtenir le taux de 'to' en USD
-          let toRateInUsd;
-          if (allCurrencies.fiat[toCurrency]) {
-            toRateInUsd = 1 / fiatRates[toCurrency];
-          } else {
-            const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${toCurrency}&vs_currencies=usd`);
-            const data = await res.json();
-            toRateInUsd = data[toCurrency].usd;
-          }
-
-          const conversionRate = fromRateInUsd / toRateInUsd;
+          const fromPriceUSD = await getPriceInUSD(fromCurrency);
+          const toPriceUSD = await getPriceInUSD(toCurrency);
+          
+          const conversionRate = fromPriceUSD / toPriceUSD;
           const finalResult = amount * conversionRate;
 
-          // Afficher les résultats
           const fromLabel = fromSelect.find('option:selected').text();
           const toLabel = toSelect.find('option:selected').text();
           
-          resultFrom.text(`${amount} ${fromLabel} =`);
-          resultValue.text(`${finalResult.toLocaleString('fr-CA', { maximumFractionDigits: 6 })} ${toLabel}`);
+          resultFrom.text(`${amount.toLocaleString('fr-CA')} ${fromLabel} =`);
+          resultValue.text(`${finalResult.toLocaleString('fr-CA', { maximumFractionDigits: 6 })}`);
 
         } catch (error) {
           console.error("Erreur de conversion:", error);
@@ -360,7 +368,7 @@
       });
 
       copyButton.on('click', () => {
-        const textToCopy = resultValue.text().split(' ')[0]; // Copie seulement la valeur numérique
+        const textToCopy = resultValue.text();
         navigator.clipboard.writeText(textToCopy).then(() => {
           copyButton.find('i').removeClass('fa-copy').addClass('fa-check');
           setTimeout(() => {
